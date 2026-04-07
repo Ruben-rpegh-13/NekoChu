@@ -27,13 +27,14 @@ animations = {
     "drag_left": frames[3],
     "sleep_right": frames[2],
     "sleep_left": frames[3],
+    "yawn_right": frames[2],
+    "yawn_left": frames[3],
 }
 
 nekochu = Entity(100, 100, animations)
 
 dragging = False
-last_activity = time.time()
-SLEEP_TIMEOUT = 10
+last_mouse_pos = pygame.mouse.get_pos()
 
 while True:
     for event in pygame.event.get():
@@ -45,36 +46,45 @@ while True:
             if event.key == pygame.K_ESCAPE:
                 pygame.quit()
                 sys.exit()
-            last_activity = time.time()
+            nekochu.last_mouse_move = time.time()
             if nekochu.state == "sleep":
                 nekochu.set_state("idle")
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             dragging = True
-            last_activity = time.time()
+            nekochu.last_mouse_move = time.time()
             if nekochu.state == "sleep":
                 nekochu.set_state("idle")
 
         elif event.type == pygame.MOUSEBUTTONUP:
             dragging = False
-            last_activity = time.time()
 
         elif event.type == pygame.MOUSEMOTION:
-            last_activity = time.time()
             if nekochu.state == "sleep":
                 nekochu.set_state("idle")
 
-    if not dragging and time.time() - last_activity > SLEEP_TIMEOUT:
-        if nekochu.state != "sleep":
-            nekochu.set_state("sleep")
-
     mx, my = pygame.mouse.get_pos()
+
+    if (mx, my) != last_mouse_pos:
+        nekochu.last_mouse_move = time.time()
+        nekochu.is_sleeping = False
+        last_mouse_pos = (mx, my)
+
+    idle_time = time.time() - nekochu.last_mouse_move
+
+    if idle_time > nekochu.sleep_delay:
+        nekochu.is_sleeping = True
+        nekochu.set_state("sleep")
+    elif idle_time > nekochu.yawn_delay:
+        nekochu.set_state("yawn")
 
     if dragging:
         nekochu.x = mx
         nekochu.y = my
         nekochu.set_state("drag")
-    else:
+        nekochu.vx = 0
+        nekochu.vy = 0
+    elif not nekochu.is_sleeping and idle_time <= nekochu.yawn_delay:
         move_towards(nekochu, mx, my)
 
     nekochu.update_animation()

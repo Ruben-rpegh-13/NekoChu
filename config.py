@@ -4,8 +4,11 @@ FPS = 60
 
 SPEED = 2.5
 STOP_DISTANCE = 10
-
 FRAME_WIDTH = 64
 FRAME_HEIGHT = 64
 
-ANIMATION_DELAYS = {"idle": 0.3, "walk": 0.1, "drag": 0.5, "sleep": 0.5}
+ACCELERATION = 0.2
+FRICTION = 0.90
+MAX_SPEED = 3.5
+
+ANIMATION_DELAYS = {"idle": 0.3, "walk": 0.1, "drag": 0.5, "sleep": 0.5, "yawn": 0.3}

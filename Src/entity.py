@@ -6,6 +6,8 @@ class Entity:
     def __init__(self, x, y, animations):
         self.x = x
         self.y = y
+        self.vx = 0
+        self.vy = 0
 
         self.animations = animations
         self.state = "idle"
@@ -14,6 +16,11 @@ class Entity:
         self.frame_index = 0
         self.last_update = time.time()
         self.next_state = None
+
+        self.last_mouse_move = time.time()
+        self.yawn_delay = 3
+        self.sleep_delay = 6
+        self.is_sleeping = False
 
     def set_state(self, new_state):
         if self.state != new_state:
