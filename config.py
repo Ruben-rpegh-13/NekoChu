@@ -8,7 +8,4 @@ STOP_DISTANCE = 10
 FRAME_WIDTH = 64
 FRAME_HEIGHT = 64
 
-ANIMATION_DELAYS = {
-    "idle": 0.3,
-    "walk": 0.1
-}
+ANIMATION_DELAYS = {"idle": 0.3, "walk": 0.1, "drag": 0.5, "sleep": 0.5}
