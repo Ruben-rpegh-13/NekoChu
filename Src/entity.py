@@ -1,4 +1,5 @@
 import time
+from config import ANIMATION_DELAYS
 
 class Entity:
     def __init__(self, x, y, animations):
@@ -11,11 +12,17 @@ class Entity:
 
         self.frame_index = 0
         self.last_update = time.time()
-        self.frame_delay = 0.15
+
+    def set_state(self, new_state):
+        if self.state != new_state:
+            self.state = new_state
+            self.frame_index = 0
 
     def update_animation(self):
+        delay = ANIMATION_DELAYS[self.state]
         now = time.time()
-        if now - self.last_update > self.frame_delay:
+
+        if now - self.last_update > delay:
             self.frame_index += 1
             self.last_update = now
 

@@ -5,6 +5,10 @@ FPS = 60
 SPEED = 2.5
 STOP_DISTANCE = 10
 
-# Tamaño de los frames actualizado
 FRAME_WIDTH = 64
 FRAME_HEIGHT = 64
+
+ANIMATION_DELAYS = {
+    "idle": 0.3,
+    "walk": 0.1
+}

@@ -8,12 +8,14 @@ def move_towards(entity, target_x, target_y):
     distance = math.sqrt(dx**2 + dy**2)
 
     if distance > STOP_DISTANCE:
-        entity.state = "walk"
+        entity.set_state("walk")
+
         if dx > 0:
             entity.direction = "right"
         else:
             entity.direction = "left"
+
         entity.x += (dx / distance) * SPEED
         entity.y += (dy / distance) * SPEED
     else:
-        entity.state = "idle"
+        entity.set_state("idle")
