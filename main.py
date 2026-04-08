@@ -49,6 +49,12 @@ lightning_effect = LightningEffect(font)
 walk_frames = load_gif_frames("sprites/pokeapi/pikachu_walk.gif")
 idle_frames = load_gif_frames("sprites/pokeapi/pikachu_crystal.gif")
 
+sleep_img = pygame.image.load("sprites/wikidex/sleep.png").convert_alpha()
+sleep_img = pygame.transform.scale(sleep_img, (SPRITE_SIZE, SPRITE_SIZE))
+
+annoyed_img = pygame.image.load("sprites/wikidex/angry.png").convert_alpha()
+annoyed_img = pygame.transform.scale(annoyed_img, (SPRITE_SIZE, SPRITE_SIZE))
+
 
 def make_fallback(rows=1, cols=4):
     return [
@@ -62,6 +68,9 @@ if not walk_frames:
 if not idle_frames:
     idle_frames = make_fallback(1, 2)
 
+sleep_frames = [sleep_img]
+annoyed_frames = [annoyed_img]
+
 animations = {
     "walk_right": walk_frames,
     "walk_left": [pygame.transform.flip(f, True, False) for f in walk_frames],
@@ -69,10 +78,10 @@ animations = {
     "idle_left": [pygame.transform.flip(f, True, False) for f in idle_frames],
     "drag_right": idle_frames,
     "drag_left": [pygame.transform.flip(f, True, False) for f in idle_frames],
-    "sleep_right": idle_frames[:1] if idle_frames else make_fallback(1, 1),
-    "sleep_left": idle_frames[:1] if idle_frames else make_fallback(1, 1),
-    "annoyed_right": idle_frames,
-    "annoyed_left": [pygame.transform.flip(f, True, False) for f in idle_frames],
+    "sleep_right": sleep_frames,
+    "sleep_left": [pygame.transform.flip(f, True, False) for f in sleep_frames],
+    "annoyed_right": annoyed_frames,
+    "annoyed_left": [pygame.transform.flip(f, True, False) for f in annoyed_frames],
     "rage_right": walk_frames,
     "rage_left": [pygame.transform.flip(f, True, False) for f in walk_frames],
     "jump_right": idle_frames,
