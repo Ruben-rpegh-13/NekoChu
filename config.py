@@ -10,16 +10,19 @@ SPRITE_SIZE = 64
 FRAME_WIDTH = 64
 FRAME_HEIGHT = 64
 
-SPEED = 2.5
+SPEED = 6
 STOP_DISTANCE = 10
 
 ANIMATION_DELAYS = {
     "idle": 0.3,
-    "walk": 0.1,
-    "drag": 0.5,
-    "sleep": 0.5,
-    "annoyed": 0.15,
-    "rage": 0.08,
+    "walk": 0.08,
+    "drag": 0.15,
+    "sleep": 0.4,
+    "annoyed": 0.07,
+    "rage": 0.05,
+    "jump": 0.10,
+    "fall": 0.12,
+    "dust": 0.06,
 }
 
 SLEEP_TIMEOUT = 10.0
@@ -53,3 +56,15 @@ RAGE_MESSAGES = [
 ]
 
 BG_COLOR = (0, 0, 0)
+GROUND_COLOR = (34, 139, 34)
+GROUND_HEIGHT = 80
+
+GRAVITY = 1200
+JUMP_STRENGTH = -520
+FALL_THRESHOLD = 10
+
+WALK_THRESHOLD = 35
+DRAG_THRESHOLD = 5
+
+DUST_OFFSET_X = 0
+DUST_OFFSET_Y = 28

@@ -1,5 +1,5 @@
 """
-NekoChu - Animated Pikachu desktop mascot.
+NekoChu - Animated Pikachu desktop mascot with physics.
 """
 
 import random
@@ -8,13 +8,27 @@ import sys
 import os
 
 from config import (
-    WINDOW_WIDTH, WINDOW_HEIGHT, FPS, SPRITE_SIZE, 
-    WINDOW_POSITION, BG_COLOR, ANNOYANCE_DURATION,
-    ANNOYANCE_MESSAGES, RAGE_DURATION, RAGE_MESSAGES
+    WINDOW_WIDTH,
+    WINDOW_HEIGHT,
+    FPS,
+    SPRITE_SIZE,
+    WINDOW_POSITION,
+    BG_COLOR,
+    GROUND_COLOR,
+    GROUND_HEIGHT,
+    ANNOYANCE_DURATION,
+    ANNOYANCE_MESSAGE_DURATION,
+    ANNOYANCE_MESSAGES,
+    RAGE_DURATION,
+    GRAVITY,
+    JUMP_STRENGTH,
+    FALL_THRESHOLD,
+    WALK_THRESHOLD,
+    DUST_OFFSET_X,
+    DUST_OFFSET_Y,
 )
 from src.animation import load_sprite_sheet
 from src.entity import Entity
-from src.movement import move_towards
 from src.sleep import SleepManager
 from src.interaction import ClickTracker
 from src.effects import TextBubble, LightningEffect
@@ -32,25 +46,40 @@ click_tracker = ClickTracker()
 text_bubble = TextBubble(font)
 lightning_effect = LightningEffect(font)
 
-frames = load_sprite_sheet("sprites/pikachu64.png", SPRITE_SIZE, SPRITE_SIZE)
+try:
+    frames = load_sprite_sheet("sprites/pikachu64.png", SPRITE_SIZE, SPRITE_SIZE)
+except:
+    frames = [
+        [pygame.Surface((SPRITE_SIZE, SPRITE_SIZE)) for _ in range(4)]
+        for _ in range(15)
+    ]
 
 animations = {
     "walk_right": frames[0],
     "walk_left": frames[1],
     "idle_right": frames[2],
     "idle_left": frames[3],
-    "drag_right": frames[2],
-    "drag_left": frames[3],
-    "sleep_right": frames[2],
-    "sleep_left": frames[3],
-    "annoyed_right": frames[0],
-    "annoyed_left": frames[1],
-    "rage_right": frames[0],
-    "rage_left": frames[1],
+    "drag_right": frames[4],
+    "drag_left": frames[5],
+    "sleep_right": frames[6],
+    "sleep_left": frames[7],
+    "annoyed_right": frames[8],
+    "annoyed_left": frames[9],
+    "rage_right": frames[10],
+    "rage_left": frames[11],
+    "jump_right": frames[12],
+    "fall_right": frames[13],
+    "dust": frames[14],
 }
 
-nekochu = Entity(100, 100, animations)
+ground_y = WINDOW_HEIGHT - SPRITE_SIZE - GROUND_HEIGHT
+nekochu = Entity(100, ground_y, animations)
+nekochu.ground_y = ground_y
+
 dragging = False
+previous_mouse_x = pygame.mouse.get_pos()[0]
+dust_animation = None
+dust_timer = 0
 
 screen.fill(BG_COLOR)
 pygame.display.update()
@@ -58,100 +87,178 @@ pygame.display.update()
 
 def handle_event(event) -> None:
     """Process a single pygame event."""
-    global dragging
-    
+    global dragging, previous_mouse_x
+
     if event.type == pygame.QUIT:
         pygame.quit()
         sys.exit()
-    
+
     elif event.type == pygame.KEYDOWN:
         if event.key == pygame.K_ESCAPE:
             pygame.quit()
             sys.exit()
+        elif event.key == pygame.K_s:
+            nekochu.set_state("sleep", ANNOYANCE_DURATION)
+        elif event.key == pygame.K_a:
+            nekochu.set_state("annoyed", ANNOYANCE_DURATION)
+        elif event.key == pygame.K_r:
+            nekochu.set_state("rage", RAGE_DURATION)
+            lightning_effect.activate(
+                RAGE_DURATION, random.choice(["¡PIKAAAAA!", "¡THUNDER!", "⚡⚡⚡"])
+            )
+
         sleep_manager.record_activity()
         if nekochu.state == "sleep":
             sleep_manager.wake_up(nekochu)
-        elif nekochu.state == "annoyed":
-            nekochu.set_state("idle")
-        elif nekochu.state == "rage":
+        elif nekochu.state in ("annoyed", "rage"):
             nekochu.set_state("idle")
             lightning_effect.deactivate()
-    
+
     elif event.type == pygame.MOUSEBUTTONDOWN:
         mx, my = event.pos
-        
-        if nekochu.contains_point(mx, my) and nekochu.state not in ("sleep", "rage"):
+        previous_mouse_x = mx
+
+        if nekochu.contains_point(mx, my) and nekochu.state not in (
+            "sleep",
+            "rage",
+            "jump",
+            "fall",
+        ):
             should_rage, message = click_tracker.record_click()
-            
+
             if should_rage:
                 nekochu.set_state("rage", RAGE_DURATION)
-                rage_msg = random.choice(RAGE_MESSAGES)
-                lightning_effect.activate(RAGE_DURATION, rage_msg)
-                text_bubble.show(rage_msg, RAGE_DURATION)
+                lightning_effect.activate(
+                    RAGE_DURATION,
+                    random.choice(
+                        ["¡PIKAAAAA-CHUUUUU!", "¡THUNDER SHOCK!", "¡RAYO MÁXIMO!"]
+                    ),
+                )
             elif message:
                 nekochu.set_state("annoyed", ANNOYANCE_DURATION)
                 text_bubble.show(message, ANNOYANCE_MESSAGE_DURATION)
-            else:
-                if nekochu.state == "annoyed":
-                    remaining = len(ANNOYANCE_MESSAGES) - click_tracker.message_index
-                    if remaining > 0:
-                        text_bubble.show(f"¡{remaining} avisos quedan!", 1.0)
         else:
             dragging = True
-        
+            nekochu.start_drag(mx, my)
+
         sleep_manager.record_activity()
         if nekochu.state == "sleep":
             sleep_manager.wake_up(nekochu)
-    
+
     elif event.type == pygame.MOUSEBUTTONUP:
         dragging = False
+        nekochu.end_drag()
         sleep_manager.record_activity()
-    
+
     elif event.type == pygame.MOUSEMOTION:
-        sleep_manager.record_activity()
         if nekochu.state == "sleep":
             sleep_manager.wake_up(nekochu)
 
 
 def update() -> None:
     """Update entity state and position."""
-    global dragging
-    
-    if nekochu.should_return_to_idle() and nekochu.state == "annoyed":
-        nekochu.set_state("idle")
-    
-    if nekochu.should_return_to_idle() and nekochu.state == "rage":
+    global dragging, previous_mouse_x, dust_timer, dust_animation
+
+    mx, my = pygame.mouse.get_pos()
+    mouse_x = mx
+    mouse_moving = abs(mouse_x - previous_mouse_x) > FALL_THRESHOLD
+
+    if nekochu.should_return_to_idle() and nekochu.state in ("annoyed", "rage"):
         nekochu.set_state("idle")
         lightning_effect.deactivate()
-    
+
     if lightning_effect.is_active():
-        lightning_effect.update()
-    
-    if sleep_manager.should_sleep() and nekochu.state not in ("sleep", "rage", "drag", "annoyed"):
+        lightning_effect.update(1 / FPS)
+    else:
+        text_bubble.update(1 / FPS)
+
+    if sleep_manager.should_sleep() and nekochu.state not in (
+        "sleep",
+        "rage",
+        "drag",
+        "annoyed",
+        "jump",
+        "fall",
+    ):
         nekochu.set_state("sleep")
-    
-    mx, my = pygame.mouse.get_pos()
-    
+
+    if nekochu.state in ("sleep_right", "sleep_left") and mouse_moving:
+        nekochu.set_state("idle")
+
     if dragging:
-        nekochu.x = mx - SPRITE_SIZE // 2
-        nekochu.y = my - SPRITE_SIZE // 2
+        nekochu.x = mx - nekochu.drag_offset_x
+        nekochu.y = my - nekochu.drag_offset_y
         nekochu.set_state("drag")
-    elif nekochu.state not in ("sleep", "annoyed", "rage"):
-        move_towards(nekochu, mx, my)
-    
+        nekochu.vx = 0
+        nekochu.vy = 0
+    else:
+        nekochu.apply_physics(1 / FPS)
+
+        if nekochu.falling_after_drag and not nekochu.on_ground:
+            if nekochu.vy < 0:
+                nekochu.set_state("jump")
+            elif nekochu.vy > FALL_THRESHOLD:
+                nekochu.set_state("fall")
+        else:
+            from config import SPEED, STOP_DISTANCE
+            import math
+
+            target_x = mx - SPRITE_SIZE // 2
+            target_y = my - SPRITE_SIZE // 2
+
+            dx = target_x - nekochu.x
+            dy = target_y - nekochu.y
+            distance = math.sqrt(dx**2 + dy**2)
+
+            if distance > STOP_DISTANCE:
+                nekochu.set_state("walk")
+                nekochu.direction = "right" if dx > 0 else "left"
+
+                dx_norm = dx / distance if distance > 0 else 0
+                dy_norm = dy / distance if distance > 0 else 0
+
+                nekochu.x += dx_norm * SPEED
+                nekochu.y += dy_norm * SPEED
+            else:
+                if nekochu.state == "walk":
+                    nekochu.set_state("idle")
+
+    if nekochu.dust_active:
+        if dust_animation is None:
+            dust_animation = 0
+            dust_timer = 0
+        dust_timer += 1 / FPS
+        if dust_timer > 0.24:
+            nekochu.dust_active = False
+            dust_animation = None
+
     nekochu.update_animation()
+    previous_mouse_x = mouse_x
 
 
 def render() -> None:
     """Draw everything to the screen."""
     screen.fill(BG_COLOR)
+
+    pygame.draw.rect(
+        screen, GROUND_COLOR, (0, ground_y + SPRITE_SIZE, WINDOW_WIDTH, GROUND_HEIGHT)
+    )
+
     nekochu.draw(screen)
-    
+
+    if nekochu.dust_active and dust_animation is not None:
+        dust_frames = animations["dust"]
+        dust_frame_index = min(int(dust_timer / 0.06), len(dust_frames) - 1)
+        dust_frame = dust_frames[dust_frame_index]
+        dust_x = int(nekochu.x + SPRITE_SIZE // 2 - 32 + DUST_OFFSET_X)
+        dust_y = int(ground_y + SPRITE_SIZE - 32 + DUST_OFFSET_Y)
+        screen.blit(dust_frame, (dust_x, dust_y))
+
     if lightning_effect.is_active():
         lightning_effect.draw(screen, int(nekochu.x), int(nekochu.y))
     else:
         text_bubble.draw(screen, int(nekochu.x + SPRITE_SIZE // 2), int(nekochu.y))
-    
+
     pygame.display.update()
 
 
@@ -160,7 +267,7 @@ def main() -> None:
     while True:
         for event in pygame.event.get():
             handle_event(event)
-        
+
         update()
         render()
         clock.tick(FPS)
