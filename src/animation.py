@@ -1,4 +1,22 @@
 import pygame
+from PIL import Image
+
+
+def load_gif_frames(path):
+    """Load animated GIF and return list of pygame surfaces."""
+    frames = []
+    try:
+        gif = Image.open(path)
+        for i in range(gif.n_frames):
+            gif.seek(i)
+            frame = gif.copy().convert("RGBA")
+            pygame_frame = pygame.image.fromstring(
+                frame.tobytes(), frame.size, frame.mode
+            )
+            frames.append(pygame_frame)
+    except Exception as e:
+        print(f"Error loading GIF {path}: {e}")
+    return frames
 
 
 def load_sprite_sheet(path, frame_width, frame_height):

@@ -27,7 +27,7 @@ from config import (
     DUST_OFFSET_X,
     DUST_OFFSET_Y,
 )
-from src.animation import load_sprite_sheet
+from src.animation import load_sprite_sheet, load_gif_frames
 from src.entity import Entity
 from src.sleep import SleepManager
 from src.interaction import ClickTracker
@@ -46,30 +46,38 @@ click_tracker = ClickTracker()
 text_bubble = TextBubble(font)
 lightning_effect = LightningEffect(font)
 
-try:
-    frames = load_sprite_sheet("sprites/pikachu64.png", SPRITE_SIZE, SPRITE_SIZE)
-except:
-    frames = [
-        [pygame.Surface((SPRITE_SIZE, SPRITE_SIZE)) for _ in range(4)]
-        for _ in range(15)
+walk_frames = load_gif_frames("sprites/pokeapi/pikachu_walk.gif")
+idle_frames = load_gif_frames("sprites/pokeapi/pikachu_crystal.gif")
+
+
+def make_fallback(rows=1, cols=4):
+    return [
+        pygame.Surface((SPRITE_SIZE, SPRITE_SIZE), pygame.SRCALPHA)
+        for _ in range(rows * cols)
     ]
 
+
+if not walk_frames:
+    walk_frames = make_fallback(1, 4)
+if not idle_frames:
+    idle_frames = make_fallback(1, 2)
+
 animations = {
-    "walk_right": frames[0],
-    "walk_left": frames[1],
-    "idle_right": frames[2],
-    "idle_left": frames[3],
-    "drag_right": frames[4],
-    "drag_left": frames[5],
-    "sleep_right": frames[6],
-    "sleep_left": frames[7],
-    "annoyed_right": frames[8],
-    "annoyed_left": frames[9],
-    "rage_right": frames[10],
-    "rage_left": frames[11],
-    "jump_right": frames[12],
-    "fall_right": frames[13],
-    "dust": frames[14],
+    "walk_right": walk_frames,
+    "walk_left": [pygame.transform.flip(f, True, False) for f in walk_frames],
+    "idle_right": idle_frames,
+    "idle_left": [pygame.transform.flip(f, True, False) for f in idle_frames],
+    "drag_right": idle_frames,
+    "drag_left": [pygame.transform.flip(f, True, False) for f in idle_frames],
+    "sleep_right": idle_frames[:1] if idle_frames else make_fallback(1, 1),
+    "sleep_left": idle_frames[:1] if idle_frames else make_fallback(1, 1),
+    "annoyed_right": idle_frames,
+    "annoyed_left": [pygame.transform.flip(f, True, False) for f in idle_frames],
+    "rage_right": walk_frames,
+    "rage_left": [pygame.transform.flip(f, True, False) for f in walk_frames],
+    "jump_right": idle_frames,
+    "fall_right": idle_frames,
+    "dust": make_fallback(1, 1),
 }
 
 ground_y = WINDOW_HEIGHT - SPRITE_SIZE - GROUND_HEIGHT
