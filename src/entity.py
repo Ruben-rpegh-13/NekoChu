@@ -2,7 +2,6 @@
 Clase base Entity — representa a la mascota en pantalla.
 """
 
-import time
 import pygame
 from config import ANIMATION_DELAYS, SPRITE_SIZE
 
@@ -47,8 +46,11 @@ class Entity:
             self._state_duration = duration
             self._state_timer = 0.0
 
-    def should_return_to_idle(self, dt: float = 1 / 60) -> bool:
-        """Acumula dt real y devuelve True cuando el estado temporal expira."""
+    def should_return_to_idle(self, dt: float) -> bool:
+        """
+        Acumula dt real y devuelve True cuando el estado temporal expira.
+        Corrige el bug anterior que asumía 60 FPS fijos.
+        """
         if self._state_duration > 0:
             self._state_timer += dt
             if self._state_timer >= self._state_duration:
@@ -102,15 +104,21 @@ class Entity:
         fallback = [k for k in self.animations if self.state in k]
         return fallback[0] if fallback else next(iter(self.animations))
 
-    def update_animation(self, dt: float = 1 / 60) -> None:
-        """Avanzar el frame de animación usando dt real."""
+    def update_animation(self, dt: float = 0.0) -> None:
+        """
+        Avanza el frame de animación usando dt real.
+
+        Nota: dt es opcional para compatibilidad con llamadas sin argumento,
+        pero se recomienda pasarlo siempre desde el bucle principal.
+        """
+        # Procesar cambio de estado pendiente
         if self.next_state:
             self.set_state(self.next_state)
             self.next_state = None
             return
 
         delay = ANIMATION_DELAYS.get(self.state, 0.2)
-        self._anim_timer += dt
+        self._anim_timer += dt if dt > 0 else (1 / 60)
 
         if self._anim_timer >= delay:
             self._anim_timer = 0.0
@@ -118,6 +126,7 @@ class Entity:
             frames = self.animations[key]
             self.frame_index = (self.frame_index + 1) % len(frames)
 
+            # Al terminar yawn, pasar a sleep
             if self.state == "yawn" and self.frame_index == 0:
                 self.next_state = "sleep"
 
@@ -129,8 +138,11 @@ class Entity:
     # ── Render ────────────────────────────────────────────────────────
 
     def draw(self, screen: pygame.Surface) -> None:
-        """Dibuja el frame actual en pantalla."""
+        """
+        Dibuja el frame actual en pantalla.
+
+        Las animaciones _left ya están pre-flipped en el diccionario de
+        animaciones — NO se aplica ningún flip adicional aquí.
+        """
         frame = self.get_current_frame()
-        if self.direction == "left":
-            frame = pygame.transform.flip(frame, True, False)
         screen.blit(frame, (int(self.x), int(self.y)))

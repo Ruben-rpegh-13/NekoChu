@@ -1,14 +1,8 @@
 """
-Configuration constants for NekoChu.
+Configuración centralizada de NekoChu.
+Las dimensiones de pantalla se resuelven en tiempo de ejecución
+a través de platform_layer — no hay valores fijos de ventana.
 """
-
-# ── Ventana ────────────────────────────────────────────────────────
-
-WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 600
-WINDOW_POSITION = (100, 100)
-
-FPS = 60
 
 # ── Sprite y animación ────────────────────────────────────────────────
 
@@ -29,7 +23,7 @@ ANIMATION_DELAYS = {
     "dust": 0.06,
 }
 
-# ── Movimiento ──────────────────────────────────────────────────────��─
+# ── Movimiento ────────────────────────────────────────────────────────
 
 SPEED = 6
 STOP_DISTANCE = 10
@@ -78,17 +72,22 @@ RAGE_MESSAGES = [
 
 # ── Render ────────────────────────────────────────────────────────────
 
+# Color usado como fondo transparente.
+# CRÍTICO: debe coincidir con lo que se pasa a setup_transparent_window().
+# No usar (0,0,0) negro puro — muchos sprites lo tienen en sus bordes.
+# (1,1,1) es casi negro, invisible en sprites, y no colisiona con píxeles reales.
 COLORKEY = (1, 1, 1)
 
+# Color de fondo de la burbuja de texto
 BUBBLE_BG_COLOR = (30, 30, 30)
 BUBBLE_TEXT_COLOR = (255, 255, 255)
 
 # ── Mantenimiento always-on-top ────────────────────────────────────────
 
+# Cada cuántos segundos se re-aplica HWND_TOPMOST para resistir eventos
+# del sistema (UAC, menú inicio, apps fullscreen) que bajan la ventana.
 TOPMOST_REFRESH_INTERVAL = 5.0
 
-# ── Render colors ──────────────────────────────────────────────────────────
+# ── FPS ────────────────────────────────────────────────────────────────
 
-BG_COLOR = (0, 0, 0)
-GROUND_COLOR = (34, 139, 34)
-GROUND_HEIGHT = 80
+FPS = 60
