@@ -1,136 +1,135 @@
+"""
+Clase base Entity — representa a la mascota en pantalla.
+"""
+
 import time
 import pygame
-from config import ANIMATION_DELAYS, SPRITE_SIZE, ANNOYANCE_DURATION, RAGE_DURATION
+from config import ANIMATION_DELAYS, SPRITE_SIZE
 
 
 class Entity:
-    def __init__(self, x, y, animations):
+    def __init__(self, x: float, y: float, animations: dict) -> None:
         self.x = x
         self.y = y
-        self.vx = 0
-        self.vy = 0
+        self.vx = 0.0
+        self.vy = 0.0
 
         self.animations = animations
         self.state = "idle"
         self.direction = "right"
 
         self.frame_index = 0
-        self.last_update = time.time()
+        self._anim_timer = 0.0
         self.next_state = None
 
-        self.last_mouse_move = time.time()
-        self.yawn_delay = 3
-        self.sleep_delay = 6
         self.is_sleeping = False
-
         self.on_ground = True
         self.ground_y = y
 
         self.dragging = False
-        self.drag_offset_x = 0
-        self.drag_offset_y = 0
+        self.drag_offset_x = 0.0
+        self.drag_offset_y = 0.0
 
         self.falling_after_drag = False
         self.dust_active = False
 
-        self._state_timer = 0
-        self._state_duration = 0
+        self._state_timer = 0.0
+        self._state_duration = 0.0
 
-    def set_state(self, new_state, duration=0):
+    # ── Estado ────────────────────────────────────────────────────────
+
+    def set_state(self, new_state: str, duration: float = 0.0) -> None:
+        """Cambia de estado y resetea animación y temporizadores."""
         if self.state != new_state:
             self.state = new_state
             self.frame_index = 0
-            self.last_update = time.time()
+            self._anim_timer = 0.0
             self._state_duration = duration
-            self._state_timer = 0
+            self._state_timer = 0.0
 
-    def contains_point(self, px, py):
-        rect = pygame.Rect(int(self.x), int(self.y), SPRITE_SIZE, SPRITE_SIZE)
-        return rect.collidepoint(px, py)
-
-    def should_return_to_idle(self):
+    def should_return_to_idle(self, dt: float = 1 / 60) -> bool:
+        """Acumula dt real y devuelve True cuando el estado temporal expira."""
         if self._state_duration > 0:
-            self._state_timer += 1 / 60
+            self._state_timer += dt
             if self._state_timer >= self._state_duration:
                 return True
         return False
 
-    def start_drag(self, mouse_x, mouse_y):
+    # ── Hit-testing ───────────────────────────────────────────────────
+
+    def contains_point(self, px: int, py: int) -> bool:
+        rect = pygame.Rect(int(self.x), int(self.y), SPRITE_SIZE, SPRITE_SIZE)
+        return rect.collidepoint(px, py)
+
+    # ── Drag ──────────────────────────────────────────────────────────
+
+    def start_drag(self, mouse_x: int, mouse_y: int) -> None:
         self.dragging = True
         self.drag_offset_x = mouse_x - self.x
         self.drag_offset_y = mouse_y - self.y
-        self.vx = 0
-        self.vy = 0
+        self.vx = 0.0
+        self.vy = 0.0
 
-    def end_drag(self):
+    def end_drag(self) -> None:
         self.dragging = False
         if self.y < self.ground_y - 10:
             self.on_ground = False
             self.falling_after_drag = True
-            self.vy = 0
+            self.vy = 0.0
 
-    def apply_physics(self, dt, gravity=1200):
+    # ── Física ────────────────────────────────────────────────────────
+
+    def apply_physics(self, dt: float, gravity: float = 1200.0) -> None:
+        """Aplica gravedad solo cuando está en el aire tras un drag."""
         if self.falling_after_drag and not self.on_ground:
             self.vy += gravity * dt
             self.y += self.vy * dt
 
             if self.y >= self.ground_y:
                 self.y = self.ground_y
-                self.vy = 0
+                self.vy = 0.0
                 self.on_ground = True
                 self.falling_after_drag = False
                 self.dust_active = True
 
-    def update_position(self, mx, my):
-        if self.dragging:
-            self.x = mx - self.drag_offset_x
-            self.y = my - self.drag_offset_y
-        else:
-            self.x += self.vx
-            self.y += self.vy
+    # ── Animación ─────────────────────────────────────────────────────
 
-            if self.on_ground:
-                self.y = self.ground_y
+    def _resolve_anim_key(self) -> str:
+        """Resuelve la clave de animación correcta con fallback."""
+        key = f"{self.state}_{self.direction}"
+        if key in self.animations:
+            return key
+        fallback = [k for k in self.animations if self.state in k]
+        return fallback[0] if fallback else next(iter(self.animations))
 
-    def update_animation(self):
-        now = time.time()
-
-        if self.next_state and now >= self.last_update:
+    def update_animation(self, dt: float = 1 / 60) -> None:
+        """Avanzar el frame de animación usando dt real."""
+        if self.next_state:
             self.set_state(self.next_state)
             self.next_state = None
             return
 
         delay = ANIMATION_DELAYS.get(self.state, 0.2)
+        self._anim_timer += dt
 
-        if now - self.last_update > delay:
-            self.last_update = now
-            key = f"{self.state}_{self.direction}"
-
-            if key not in self.animations:
-                fallback_keys = [k for k in self.animations.keys() if self.state in k]
-                if fallback_keys:
-                    key = fallback_keys[0]
-                else:
-                    key = list(self.animations.keys())[0]
-
+        if self._anim_timer >= delay:
+            self._anim_timer = 0.0
+            key = self._resolve_anim_key()
             frames = self.animations[key]
             self.frame_index = (self.frame_index + 1) % len(frames)
 
             if self.state == "yawn" and self.frame_index == 0:
                 self.next_state = "sleep"
-                self.last_update = now + 0.3
 
-    def get_current_frame(self):
-        key = f"{self.state}_{self.direction}"
-
-        if key not in self.animations:
-            fallback_keys = [k for k in self.animations.keys() if self.state in k]
-            key = fallback_keys[0] if fallback_keys else list(self.animations.keys())[0]
-
+    def get_current_frame(self) -> pygame.Surface:
+        key = self._resolve_anim_key()
         frames = self.animations[key]
         return frames[min(self.frame_index, len(frames) - 1)]
 
-    def draw(self, screen):
+    # ── Render ────────────────────────────────────────────────────────
+
+    def draw(self, screen: pygame.Surface) -> None:
+        """Dibuja el frame actual en pantalla."""
         frame = self.get_current_frame()
         if self.direction == "left":
             frame = pygame.transform.flip(frame, True, False)
